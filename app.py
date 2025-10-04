@@ -27,9 +27,8 @@ CUSTOM_CSS = """
         text-align: center;
     }
 
-    /* Style for the button (mimicking the original purple) */
     .stButton>button {
-        background-color: rgb(203 70 17);;
+        background-color: rgb(203 70 17);
         color: white;
         padding: 15px 30px;
         border-radius: 8px;
@@ -49,26 +48,24 @@ CUSTOM_CSS = """
         margin-top: 20px;
         padding: 20px;
         border-radius: 8px;
-        font-size: 1.5em;
+        font-size: 1.2em; /* Reduced size slightly for better fit */
         font-weight: bold;
         text-align: center;
+        line-height: 1.5; /* Added line height for better reading */
     }
     
-    /* Colors for 'Likely Scam' (Spam) */
     .result-spam {
-        background-color: #ffdddd; /* Light Red */
-        color: #d8000c; /* Dark Red */
+        background-color: #ffdddd; 
+        color: #d8000c;
         border: 1px solid #d8000c;
     }
 
-    /* Colors for 'Likely Not Spam' (Ham) - The requested Green */
     .result-ham {
-        background-color: #e0ffe0; /* Light Green */
-        color: #008000; /* Dark Green */
+        background-color: #e0ffe0; 
+        color: #008000; 
         border: 1px solid #008000;
     }
     
-    /* Hide Streamlit's default header/footer/sidebar buttons for a cleaner look */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -84,8 +81,6 @@ st.set_page_config(
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
-# --- 2. MODEL LOADING AND CACHING ---
-# File names for the saved artifacts (Must match the files you downloaded)
 MODEL_FILE = 'spam_model.pkl'
 VECTORIZER_FILE = 'vectorizer.pkl'
 
@@ -93,11 +88,9 @@ VECTORIZER_FILE = 'vectorizer.pkl'
 def load_artifacts():
     """Loads the pre-trained model and vectorizer from PKL files."""
     try:
-        # Load the trained model
         with open(MODEL_FILE, 'rb') as file:
             model = pickle.load(file)
 
-        # Load the fitted vectorizer
         with open(VECTORIZER_FILE, 'rb') as file:
             vectorizer = pickle.load(file)
             
@@ -113,17 +106,27 @@ model, vectorizer = load_artifacts()
 # --- 3. CORE PREDICTION LOGIC ---
 
 def predict_message(message, model, vectorizer):
-   
+    
     if not model or not vectorizer:
-        return 'Server Error: Model Initialization Failed', 'spam'
+        return 'Server Error: Model Initialization Failed', 'spam', '0%' 
         
     message_vector = vectorizer.transform([message])
-    prediction = model.predict(message_vector)[0]
     
-    if prediction == 1:
-        return 'Likely Scam', 'spam'
-    else:
-        return 'Likely Not Spam', 'ham'
+    probabilities = model.predict_proba(message_vector)[0]
+    
+    prediction_index = model.predict(message_vector)[0]
+    
+    if prediction_index == 1: 
+        display_message = 'Likely Scam'
+        css_class = 'spam'
+        score_percent = f"{probabilities[1] * 100:.2f}%"
+    else: 
+        display_message = 'Likely Not Spam'
+        css_class = 'ham'
+        score_percent = f"{probabilities[0] * 100:.2f}%"
+        
+    return display_message, css_class, score_percent
+
 
 st.markdown(f'<h1 style="color: rgb(203 70 17); font-size: 2em; margin-bottom: 5px;"><i class="fas fa-shield-alt"></i> Email Spam Detection</h1>', unsafe_allow_html=True)
 st.markdown('<p style="font-size: 1.1em; margin-bottom: 20px;">Enter your message below to check if it is spam or not.</p>', unsafe_allow_html=True)
@@ -138,15 +141,17 @@ user_input = st.text_area(
 
 if st.button("Check", key="check_btn"):
     if user_input:
-  
-        display_message, css_class = predict_message(user_input, model, vectorizer)
+
+        display_message, css_class, score_percent = predict_message(user_input, model, vectorizer)
         
         icon = '🚨' if css_class == 'spam' else '✅'
         
         st.markdown(
             f"""
             <div class="result-box result-{css_class}">
-                {icon} The message is: {display_message}
+                {icon} The message is: <strong>{display_message}</strong>
+                <br>
+                Confidence Score: <strong>{score_percent}</strong>
             </div>
             """, 
             unsafe_allow_html=True
