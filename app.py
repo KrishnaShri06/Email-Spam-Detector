@@ -4,25 +4,18 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 import os
 
-# --- 1. CONFIGURATION AND CUSTOM CSS STYLING ---
-
-# Custom CSS to mimic the original Django/HTML layout (centered card, colors, font)
 CUSTOM_CSS = """
 <style>
-    /* Use Roboto font and set the background gradient */
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
     
     body {
         font-family: 'Roboto', sans-serif !important;
     }
     
-    /* Apply the custom background gradient to the whole page */
     .stApp {
         background: linear-gradient(to right top, #000000, #0a0a0a, #121212, #181818, #1d1d1e, #262632, #2e2f47, #37395d, #fc4b11);
     }
     
-    /* Center the main content column and apply the card style */
-    /* This class selector targets the main container where content sits */
     .main [data-testid="stVerticalBlock"] { 
         max-width: 500px;
         width: 90%;
@@ -36,7 +29,7 @@ CUSTOM_CSS = """
 
     /* Style for the button (mimicking the original purple) */
     .stButton>button {
-        background-color: #6a11cb;
+        background-color: rgb(203 70 17);;
         color: white;
         padding: 15px 30px;
         border-radius: 8px;
@@ -52,7 +45,6 @@ CUSTOM_CSS = """
         background-color: #2575fc;
     }
 
-    /* Style for the result text (mimicking the bold center display) */
     .result-box {
         margin-top: 20px;
         padding: 20px;
@@ -85,11 +77,10 @@ CUSTOM_CSS = """
 
 st.set_page_config(
     page_title="Spam Detection",
-    layout="centered", # Ensure Streamlit content is centered
+    layout="centered", 
     initial_sidebar_state="collapsed",
 )
 
-# Inject the custom CSS
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
@@ -122,34 +113,21 @@ model, vectorizer = load_artifacts()
 # --- 3. CORE PREDICTION LOGIC ---
 
 def predict_message(message, model, vectorizer):
-    """
-    Transforms the input message and predicts.
-    Returns the descriptive message and the CSS class string (spam/ham).
-    """
+   
     if not model or not vectorizer:
-        # Failsafe if model loading failed
         return 'Server Error: Model Initialization Failed', 'spam'
         
-    # Transform message using the loaded vectorizer
     message_vector = vectorizer.transform([message])
     prediction = model.predict(message_vector)[0]
     
-    # FIX: Check if the prediction is the integer 1 (Spam) or 0 (Ham)
     if prediction == 1:
         return 'Likely Scam', 'spam'
     else:
-        # Assuming 0 is the non-spam class
         return 'Likely Not Spam', 'ham'
 
-
-# --- 4. STREAMLIT APP LAYOUT ---
-
-# Header Section
-st.markdown(f'<h1 style="color: #6a11cb; font-size: 2em; margin-bottom: 5px;"><i class="fas fa-shield-alt"></i> Spam Detection</h1>', unsafe_allow_html=True)
+st.markdown(f'<h1 style="color: rgb(203 70 17); font-size: 2em; margin-bottom: 5px;"><i class="fas fa-shield-alt"></i> Email Spam Detection</h1>', unsafe_allow_html=True)
 st.markdown('<p style="font-size: 1.1em; margin-bottom: 20px;">Enter your message below to check if it is spam or not.</p>', unsafe_allow_html=True)
 
-
-# Input Area
 st.markdown('<p style="font-size: 1em; text-align: left; margin-bottom: -15px;">Text:</p>', unsafe_allow_html=True)
 user_input = st.text_area(
     "Text:",
@@ -158,16 +136,13 @@ user_input = st.text_area(
     label_visibility="collapsed"
 )
 
-# Check Button
 if st.button("Check", key="check_btn"):
     if user_input:
-        # Run prediction
+  
         display_message, css_class = predict_message(user_input, model, vectorizer)
         
-        # Determine icon
         icon = '🚨' if css_class == 'spam' else '✅'
-            
-        # Display the result using the custom CSS classes
+        
         st.markdown(
             f"""
             <div class="result-box result-{css_class}">
@@ -179,5 +154,4 @@ if st.button("Check", key="check_btn"):
     else:
         st.warning("Please enter a message to check.")
 
-# Add Font Awesome dependency for icons (used in H1)
 st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">', unsafe_allow_html=True)
