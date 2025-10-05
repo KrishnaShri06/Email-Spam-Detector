@@ -27,10 +27,14 @@ You must have Python installed.
 Ensure your repository contains the following files in the root directory:
 
 /
-├── app.py            # The main Streamlit application (previously app_hackathon.py)
+├── app.py  # The main Streamlit application (previously app_hackathon.py)
+
 ├── spam_model.pkl    # Pre-trained Multinomial Naive Bayes model
+
 ├── vectorizer.pkl    # Pre-fitted CountVectorizer object
+
 └── requirements.txt  # Python dependency list
+
 
 
 2. Installation
@@ -47,6 +51,7 @@ pip install -r requirements.txt
 
 3. Run the Application
 Execute the Streamlit app from your terminal:
+
 streamlit run app.py
 
 The application will open automatically in your browser.
