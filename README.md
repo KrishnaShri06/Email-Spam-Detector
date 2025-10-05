@@ -36,8 +36,8 @@ Ensure your repository contains the following files in the root directory:
 2. Installation
 Clone this repository:
 
-git clone [YOUR_REPO_URL]
-cd [YOUR_REPO_NAME]
+git clone https://github.com/KrishnaShri06/Email-Spam-Detector.git
+cd Email-Spam-Detector
 
 
 Install the required dependencies:
@@ -47,9 +47,7 @@ pip install -r requirements.txt
 
 3. Run the Application
 Execute the Streamlit app from your terminal:
-
 streamlit run app.py
-
 
 The application will open automatically in your browser.
 
