@@ -127,20 +127,22 @@ def predict_message(message, model, vectorizer):
         
     return display_message, css_class, score_percent
 
+# . API ENDPOINT LOGIC FOR N8N (DO NOT DELETE) ---
 # Check if the request is an API call using query parameters
 api_mode = st.query_params.get("api")
 
 if api_mode == "true":
     import json
-  
+    # Get the message from the query parameters
     message = st.query_params.get("message")
     
+    # Check for required parameters
     if not message:
         # Output error JSON and stop the script
         st.json({"status": "error", "reason": "Missing 'message' query parameter. Use: ?api=true&message=..."}, expanded=False)
-        st.stop()
+        st.stop() # <-- CRITICAL: Stops HTML from rendering
         
-    # Perform prediction
+    # Perform prediction (model and vectorizer must be loaded first)
     display_message, css_class, score_percent = predict_message(message, model, vectorizer)
     
     # Map the class to a clean label for automation
@@ -152,15 +154,15 @@ if api_mode == "true":
     except ValueError:
         confidence_float = 0.0 # Default if model failed to initialize
 
-    # Output raw JSON and stop Streamlit rendering
-    # n8n will read this JSON object directly
+    # Output raw JSON
     st.json({
         "status": "success",
         "prediction": prediction_label,
         "confidence": confidence_float
     }, expanded=False)
-    st.stop()
     
+    st.stop() # <-- CRITICAL: Stops HTML from rendering
+
 # --- END API ENDPOINT LOGIC ---
 
 # --- START OF MANUAL UI RENDERING (Only runs if API mode is FALSE) ---
