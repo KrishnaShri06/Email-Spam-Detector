@@ -127,6 +127,43 @@ def predict_message(message, model, vectorizer):
         
     return display_message, css_class, score_percent
 
+# Check if the request is an API call using query parameters
+api_mode = st.query_params.get("api")
+
+if api_mode == "true":
+    import json
+  
+    message = st.query_params.get("message")
+    
+    if not message:
+        # Output error JSON and stop the script
+        st.json({"status": "error", "reason": "Missing 'message' query parameter. Use: ?api=true&message=..."}, expanded=False)
+        st.stop()
+        
+    # Perform prediction
+    display_message, css_class, score_percent = predict_message(message, model, vectorizer)
+    
+    # Map the class to a clean label for automation
+    prediction_label = "spam" if css_class == 'spam' else "ham"
+    
+    # Clean up score_percent (remove trailing %) and convert to float
+    try:
+        confidence_float = float(score_percent.strip('%')) / 100.0
+    except ValueError:
+        confidence_float = 0.0 # Default if model failed to initialize
+
+    # Output raw JSON and stop Streamlit rendering
+    # n8n will read this JSON object directly
+    st.json({
+        "status": "success",
+        "prediction": prediction_label,
+        "confidence": confidence_float
+    }, expanded=False)
+    st.stop()
+    
+# --- END API ENDPOINT LOGIC ---
+
+# --- START OF MANUAL UI RENDERING (Only runs if API mode is FALSE) ---
 
 st.markdown(f'<h1 style="color: rgb(203 70 17); font-size: 2em; margin-bottom: 5px;"><i class="fas fa-shield-alt"></i> Email Spam Detection</h1>', unsafe_allow_html=True)
 st.markdown('<p style="font-size: 1.1em; margin-bottom: 20px;">Enter your message below to check if it is spam or not.</p>', unsafe_allow_html=True)
