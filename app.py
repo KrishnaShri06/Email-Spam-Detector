@@ -2,20 +2,86 @@ import streamlit as st
 import pickle
 import os
 import json
+import sys
+
+def output_json_and_exit(data):
+    print(json.dumps(data))
+    sys.exit(0)
+
+api_mode = None
+try:
+    api_mode = st.query_params.get("api")
+except:
+    pass
+
+
+if api_mode == "true":
+
+    MODEL_FILE = 'spam_model.pkl'
+    VECTORIZER_FILE = 'vectorizer.pkl'
+
+    @st.cache_resource
+    def load_artifacts():
+        try:
+            with open(MODEL_FILE, 'rb') as file:
+                model = pickle.load(file)
+
+            with open(VECTORIZER_FILE, 'rb') as file:
+                vectorizer = pickle.load(file)
+
+            return model, vectorizer
+
+        except FileNotFoundError:
+            return None, None
+
+    model, vectorizer = load_artifacts()
+
+    message = st.query_params.get("message")
+
+    def predict_message_api(message, model, vectorizer):
+        if not model or not vectorizer:
+            return 'Server Error: Model Initialization Failed', 'spam', 0.00
+
+        message_vector = vectorizer.transform([message])
+        probabilities = model.predict_proba(message_vector)[0]
+        prediction_index = model.predict(message_vector)[0]
+
+        confidence_float = probabilities[1] if prediction_index == 1 else probabilities[0]
+        prediction_label = "spam" if prediction_index == 1 else "ham"
+
+        return "OK", prediction_label, confidence_float
+
+    if not model or not vectorizer:
+        output_json_and_exit({"status": "error", "reason": "Server Error: Model files not found on disk."})
+
+    if not message:
+        output_json_and_exit({"status": "error", "reason": "Missing 'message' query parameter. Use: ?api=true&message=..."})
+
+
+    display_message, prediction_label, confidence_float = predict_message_api(message, model, vectorizer)
+
+    response_data = {
+        "status": "success",
+        "prediction": prediction_label,
+        "confidence": confidence_float
+    }
+
+    output_json_and_exit(response_data)
+
 
 CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
-    
+
     body {
         font-family: 'Roboto', sans-serif !important;
     }
-    
+
     .stApp {
         background: linear-gradient(to right top, #000000, #0a0a0a, #121212, #181818, #1d1d1e, #262632, #2e2f47, #37395d, #fc4b11);
     }
-    
-    .main [data-testid="stVerticalBlock"] { 
+
+    .main [data-testid="stVerticalBlock"] {
         max-width: 500px;
         width: 90%;
         margin: 50px auto;
@@ -52,19 +118,19 @@ CUSTOM_CSS = """
         text-align: center;
         line-height: 1.5;
     }
-    
+
     .result-spam {
-        background-color: #ffdddd; 
+        background-color: #ffdddd;
         color: #d8000c;
         border: 1px solid #d8000c;
     }
 
     .result-ham {
-        background-color: #e0ffe0; 
-        color: #008000; 
+        background-color: #e0ffe0;
+        color: #008000;
         border: 1px solid #008000;
     }
-    
+
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -73,7 +139,7 @@ CUSTOM_CSS = """
 
 st.set_page_config(
     page_title="Spam Detection",
-    layout="centered", 
+    layout="centered",
     initial_sidebar_state="collapsed",
 )
 
@@ -85,14 +151,13 @@ VECTORIZER_FILE = 'vectorizer.pkl'
 
 @st.cache_resource
 def load_artifacts():
-    """Loads the pre-trained model and vectorizer from PKL files."""
     try:
         with open(MODEL_FILE, 'rb') as file:
             model = pickle.load(file)
 
         with open(VECTORIZER_FILE, 'rb') as file:
             vectorizer = pickle.load(file)
-            
+
         return model, vectorizer
 
     except FileNotFoundError:
@@ -101,58 +166,28 @@ def load_artifacts():
 
 
 def predict_message(message, model, vectorizer):
-    
+
     if not model or not vectorizer:
-        return 'Server Error: Model Initialization Failed', 'spam', 0.00
-        
+        return 'Server Error: Model Initialization Failed', 'spam', 0.00, "0.00%"
+
     message_vector = vectorizer.transform([message])
-    
+
     probabilities = model.predict_proba(message_vector)[0]
-    
+
     prediction_index = model.predict(message_vector)[0]
-    
-    if prediction_index == 1: 
+
+    if prediction_index == 1:
         display_message = 'Likely Scam'
         css_class = 'spam'
         confidence_score = probabilities[1]
-    else: 
+    else:
         display_message = 'Likely Not Spam'
         css_class = 'ham'
         confidence_score = probabilities[0]
-        
+
     score_percent = f"{confidence_score * 100:.2f}%"
-    
+
     return display_message, css_class, confidence_score, score_percent
-
-
-api_mode = st.query_params.get("api")
-
-if api_mode == "true":
-    
-    model, vectorizer = load_artifacts()
-
-    message = st.query_params.get("message")
-    
-    if not message:
-    
-        st.json({"status": "error", "reason": "Missing 'message' query parameter. Use: ?api=true&message=..."}, expanded=False)
-        st.stop()
-        
-    display_message, css_class, confidence_float, score_percent = predict_message(message, model, vectorizer)
-    
-    prediction_label = "spam" if css_class == 'spam' else "ham"
-    
-    if confidence_float == 0.00 and display_message.startswith("Server Error"):
-        st.json({"status": "error", "reason": display_message}, expanded=False)
-        st.stop()
-        
-    st.json({
-        "status": "success",
-        "prediction": prediction_label,
-        "confidence": confidence_float
-    }, expanded=False)
-    
-    st.stop() 
 
 
 model, vectorizer = load_artifacts()
@@ -172,9 +207,9 @@ if st.button("Check", key="check_btn"):
     if user_input:
 
         display_message, css_class, confidence_float, score_percent = predict_message(user_input, model, vectorizer)
-        
+
         icon = '🚨' if css_class == 'spam' else '✅'
-        
+
         st.markdown(
             f"""
             <div class="result-box result-{css_class}">
@@ -182,7 +217,7 @@ if st.button("Check", key="check_btn"):
                 <br>
                 Confidence Score: <strong>{score_percent}</strong>
             </div>
-            """, 
+            """,
             unsafe_allow_html=True
         )
     else:
