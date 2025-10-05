@@ -1,8 +1,7 @@
 import streamlit as st
 import pickle
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
 import os
+import json
 
 CUSTOM_CSS = """
 <style>
@@ -48,10 +47,10 @@ CUSTOM_CSS = """
         margin-top: 20px;
         padding: 20px;
         border-radius: 8px;
-        font-size: 1.2em; /* Reduced size slightly for better fit */
+        font-size: 1.2em;
         font-weight: bold;
         text-align: center;
-        line-height: 1.5; /* Added line height for better reading */
+        line-height: 1.5;
     }
     
     .result-spam {
@@ -97,18 +96,14 @@ def load_artifacts():
         return model, vectorizer
 
     except FileNotFoundError:
-        st.error(f"Error: Required file not found. Ensure {MODEL_FILE} and {VECTORIZER_FILE} are in the root directory.")
+        st.error(f"Error: Required file not found. Ensure {MODEL_FILE} and {VECTORIZER_FILE} are deployed.")
         return None, None
 
-model, vectorizer = load_artifacts()
-
-
-# CORE PREDICTION LOGIC
 
 def predict_message(message, model, vectorizer):
     
     if not model or not vectorizer:
-        return 'Server Error: Model Initialization Failed', 'spam', '0%' 
+        return 'Server Error: Model Initialization Failed', 'spam', 0.00
         
     message_vector = vectorizer.transform([message])
     
@@ -119,19 +114,23 @@ def predict_message(message, model, vectorizer):
     if prediction_index == 1: 
         display_message = 'Likely Scam'
         css_class = 'spam'
-        score_percent = f"{probabilities[1] * 100:.2f}%"
+        confidence_score = probabilities[1]
     else: 
         display_message = 'Likely Not Spam'
         css_class = 'ham'
-        score_percent = f"{probabilities[0] * 100:.2f}%"
+        confidence_score = probabilities[0]
         
-    return display_message, css_class, score_percent
+    score_percent = f"{confidence_score * 100:.2f}%"
+    
+    return display_message, css_class, confidence_score, score_percent
 
 
 api_mode = st.query_params.get("api")
 
 if api_mode == "true":
-    import json
+    
+    model, vectorizer = load_artifacts()
+
     message = st.query_params.get("message")
     
     if not message:
@@ -139,15 +138,14 @@ if api_mode == "true":
         st.json({"status": "error", "reason": "Missing 'message' query parameter. Use: ?api=true&message=..."}, expanded=False)
         st.stop()
         
-    display_message, css_class, score_percent = predict_message(message, model, vectorizer)
+    display_message, css_class, confidence_float, score_percent = predict_message(message, model, vectorizer)
     
     prediction_label = "spam" if css_class == 'spam' else "ham"
     
-    try:
-        confidence_float = float(score_percent.strip('%')) / 100.0
-    except ValueError:
-        confidence_float = 0.0 
-
+    if confidence_float == 0.00 and display_message.startswith("Server Error"):
+        st.json({"status": "error", "reason": display_message}, expanded=False)
+        st.stop()
+        
     st.json({
         "status": "success",
         "prediction": prediction_label,
@@ -155,6 +153,9 @@ if api_mode == "true":
     }, expanded=False)
     
     st.stop() 
+
+
+model, vectorizer = load_artifacts()
 
 st.markdown(f'<h1 style="color: rgb(203 70 17); font-size: 2em; margin-bottom: 5px;"><i class="fas fa-shield-alt"></i> Email Spam Detection</h1>', unsafe_allow_html=True)
 st.markdown('<p style="font-size: 1.1em; margin-bottom: 20px;">Enter your message below to check if it is spam or not.</p>', unsafe_allow_html=True)
@@ -170,7 +171,7 @@ user_input = st.text_area(
 if st.button("Check", key="check_btn"):
     if user_input:
 
-        display_message, css_class, score_percent = predict_message(user_input, model, vectorizer)
+        display_message, css_class, confidence_float, score_percent = predict_message(user_input, model, vectorizer)
         
         icon = '🚨' if css_class == 'spam' else '✅'
         
