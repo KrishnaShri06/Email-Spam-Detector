@@ -177,7 +177,7 @@ def predict_message(message, model, vectorizer):
     prediction_index = model.predict(message_vector)[0]
 
     if prediction_index == 1:
-        display_message = 'Likely Scam'
+        display_message = 'Likely Spam'
         css_class = 'spam'
         confidence_score = probabilities[1]
     else:
